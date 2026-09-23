@@ -22,10 +22,8 @@ from typing import Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 import requests
-import yt_dlp
 from api import call_claude as _call_claude
 from bs4 import BeautifulSoup
-from faster_whisper import WhisperModel
 
 # Working directory setup
 CEO_DIR = Path(__file__).parent.parent
@@ -39,8 +37,21 @@ class ContentExtractor:
     def __init__(self):
         self.whisper_model = None
 
+    @staticmethod
+    def _load_yt_dlp():
+        """Load the optional YouTube dependency only when it is needed."""
+        try:
+            import yt_dlp
+        except ImportError as exc:
+            raise RuntimeError(
+                "YouTube extraction requires the optional video dependencies; "
+                "install them with 'pip install -r requirements-youtube.txt'."
+            ) from exc
+        return yt_dlp
+
     def extract_youtube_content(self, url: str) -> Dict[str, str]:
         """Extract transcript from YouTube video."""
+        yt_dlp = self._load_yt_dlp()
         print(f"Processing YouTube URL: {url}")
         
         # Try to get auto-captions first
@@ -87,6 +98,7 @@ class ContentExtractor:
 
     def _extract_captions_with_ydl(self, url: str) -> str:
         """Extract captions using yt-dlp."""
+        yt_dlp = self._load_yt_dlp()
         ydl_opts = {
             'writesubtitles': True,
             'writeautomaticsub': True,
@@ -143,6 +155,13 @@ class ContentExtractor:
         """Transcribe audio using Whisper."""
         if not self.whisper_model:
             print("Loading Whisper model (base)...")
+            try:
+                from faster_whisper import WhisperModel
+            except ImportError as exc:
+                raise RuntimeError(
+                    "Audio transcription requires the optional video dependencies; "
+                    "install them with 'pip install -r requirements-youtube.txt'."
+                ) from exc
             self.whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
         
         # Download audio
@@ -151,6 +170,7 @@ class ContentExtractor:
             'outtmpl': '/tmp/%(title)s.%(ext)s',
             'quiet': True,
         }
+        yt_dlp = self._load_yt_dlp()
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

@@ -18,6 +18,8 @@ from collections import defaultdict, Counter
 from typing import Dict, List, Optional, Tuple, Set
 import re
 
+import anthropic
+
 # Third-party imports (install if needed)
 from api import call_claude, get_api_key
 

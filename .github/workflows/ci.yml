@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Compile all tools
+        run: python -m compileall -q tools
+      - name: Run regression tests
+        run: python -m pytest -q
+      - name: Smoke-test command entry points
+        run: |
+          python tools/orchestrator.py --help >/dev/null
+          python tools/hunter.py --help >/dev/null
+          python tools/analyst.py --help >/dev/null
+          python tools/director.py --help >/dev/null
+          python tools/librarian.py --help >/dev/null
