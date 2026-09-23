@@ -14,23 +14,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional
+import requests
 import yaml
-
-# Try importing requests
-try:
-    import requests
-except ImportError:
-    print("Installing requests...")
-    os.system("pip install --break-system-packages requests")
-    import requests
-
-# Try importing yaml
-try:
-    import yaml
-except ImportError:
-    print("Installing pyyaml...")
-    os.system("pip install --break-system-packages pyyaml")
-    import yaml
 
 
 class DirectorAgent:
@@ -38,7 +23,6 @@ class DirectorAgent:
         if ceo_dir is None:
             ceo_dir = str(Path(__file__).parent.parent)
         self.ceo_dir = Path(ceo_dir)
-        self.api_key = self._get_api_key()
         self.current_date = datetime.now().strftime("%Y-%m-%d")
         
         # Ensure required directories exist
@@ -47,31 +31,6 @@ class DirectorAgent:
         
         print(f"🧠 DIRECTOR initialized for {self.current_date}")
         print(f"📁 Working in: {self.ceo_dir}")
-
-    def _get_api_key(self) -> str:
-        """Get Anthropic API key from auth profiles or environment."""
-        # Try environment first
-        api_key = os.environ.get('ANTHROPIC_API_KEY')
-        if api_key:
-            return api_key
-            
-        # Try auth profiles
-        auth_path = Path.home() / ".openclaw/agents/main/agent/auth-profiles.json"
-        if auth_path.exists():
-            try:
-                with open(auth_path) as f:
-                    auth_data = json.load(f)
-                    
-                # Look for anthropic token
-                profiles = auth_data.get("profiles", {})
-                for profile_name, profile_data in profiles.items():
-                    if profile_data.get("provider") == "anthropic":
-                        return profile_data.get("token")
-                        
-            except Exception as e:
-                print(f"Warning: Could not read auth profiles: {e}")
-        
-        raise ValueError("No Anthropic API key found. Set ANTHROPIC_API_KEY environment variable.")
 
     def _read_json_safe(self, file_path: Path, default: Any = None) -> Any:
         """Safely read JSON file with default fallback."""

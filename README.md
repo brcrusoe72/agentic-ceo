@@ -183,7 +183,7 @@ autonomy_boundaries:
 ### Prerequisites
 
 - Python 3.12+
-- An Anthropic API key (Claude)
+- [OpenClaw](https://github.com/openclaw/openclaw) installed and authenticated
 - [AgentSearch](https://github.com/brcrusoe72/agent-search) running on localhost:3939 (for web search)
 
 ### Setup
@@ -193,9 +193,15 @@ git clone https://github.com/brcrusoe72/agentic-ceo.git
 cd agentic-ceo
 
 pip install -r requirements.txt
-
-export ANTHROPIC_API_KEY=your_key_here
 ```
+
+YouTube transcription is optional because its local Whisper runtime is large. Install it only when needed:
+
+```bash
+pip install -r requirements-youtube.txt
+```
+
+The legacy Librarian LLM operations still accept `ANTHROPIC_API_KEY`; the other agents route model calls through the authenticated OpenClaw CLI.
 
 ### Run a Single Hunt
 
