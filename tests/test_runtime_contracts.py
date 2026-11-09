@@ -51,3 +51,19 @@ def test_openclaw_response_is_parsed(monkeypatch):
     )
 
     assert api.call_claude("system", "user") == "working response"
+
+
+def test_full_cycle_stops_when_director_fails(monkeypatch):
+    orchestrator = importlib.import_module("orchestrator")
+    calls = []
+
+    def failed_director(name, script, args=None):
+        calls.append((name, script, args))
+        return False
+
+    monkeypatch.setattr(orchestrator, "run_agent", failed_director)
+
+    results = orchestrator.full_cycle()
+
+    assert results == {"director": False}
+    assert calls == [("Director", "director.py", None)]
