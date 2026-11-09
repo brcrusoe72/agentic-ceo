@@ -174,6 +174,9 @@ def full_cycle():
 
     # 1. Director plans (assigns hunts + missions)
     results["director"] = run_agent("Director", "director.py")
+    if not results["director"]:
+        print("\\n❌ Director failed; aborting cycle to avoid executing stale missions")
+        return results
 
     # 2. Execute Director-assigned hunts (the core intelligence gathering)
     hunt_results = run_hunts()
