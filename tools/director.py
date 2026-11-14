@@ -17,6 +17,8 @@ from typing import Dict, List, Any, Optional
 import requests
 import yaml
 
+from file_io import atomic_write_json
+
 
 class DirectorAgent:
     def __init__(self, ceo_dir: str = None):
@@ -240,8 +242,7 @@ Be strategic, be specific, be actionable. This is your CEO moment."""
         
         # Save missions.json
         missions_file = self.ceo_dir / "state" / "missions.json"
-        with open(missions_file, 'w') as f:
-            json.dump(plan, f, indent=2)
+        atomic_write_json(missions_file, plan, indent=2)
         print(f"💾 Saved strategic plan to {missions_file}")
         
         # Create director report
@@ -262,8 +263,7 @@ Be strategic, be specific, be actionable. This is your CEO moment."""
         
         # Save director report
         report_file = self.ceo_dir / "state" / "agent-reports" / f"director-{self.current_date}.json"
-        with open(report_file, 'w') as f:
-            json.dump(report, f, indent=2)
+        atomic_write_json(report_file, report, indent=2)
         print(f"📋 Saved director report to {report_file}")
 
     def run_planning_cycle(self) -> None:
@@ -370,8 +370,7 @@ Consider: What's working? What isn't? Where should we double down? What should w
         }
         
         report_file = self.ceo_dir / "state" / "agent-reports" / f"director-weekly-{self.current_date}.json"
-        with open(report_file, 'w') as f:
-            json.dump(reflection_report, f, indent=2)
+        atomic_write_json(report_file, reflection_report, indent=2)
             
         print(f"📋 Weekly reflection saved to {report_file}")
         print("\n🔍 WEEKLY REFLECTION SUMMARY")

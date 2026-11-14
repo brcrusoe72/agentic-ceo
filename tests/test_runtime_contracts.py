@@ -67,3 +67,29 @@ def test_full_cycle_stops_when_director_fails(monkeypatch):
 
     assert results == {"director": False}
     assert calls == [("Director", "director.py", None)]
+
+
+def test_atomic_json_write_preserves_existing_file_on_replace_failure(monkeypatch, tmp_path):
+    file_io = importlib.import_module("file_io")
+    target = tmp_path / "missions.json"
+    target.write_text('{"current_cycle": "previous"}')
+
+    def failed_replace(source, destination):
+        raise OSError("simulated interrupted replacement")
+
+    monkeypatch.setattr(file_io.os, "replace", failed_replace)
+
+    with pytest.raises(OSError, match="interrupted replacement"):
+        file_io.atomic_write_json(target, {"current_cycle": "new"}, indent=2)
+
+    assert json.loads(target.read_text()) == {"current_cycle": "previous"}
+    assert list(tmp_path.glob(".missions.json.*.tmp")) == []
+
+
+def test_atomic_json_write_publishes_complete_document(tmp_path):
+    file_io = importlib.import_module("file_io")
+    target = tmp_path / "missions.json"
+
+    file_io.atomic_write_json(target, {"missions": ["research"]}, indent=2)
+
+    assert json.loads(target.read_text()) == {"missions": ["research"]}
