@@ -14,23 +14,10 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional
+import requests
 import yaml
 
-# Try importing requests
-try:
-    import requests
-except ImportError:
-    print("Installing requests...")
-    os.system("pip install --break-system-packages requests")
-    import requests
-
-# Try importing yaml
-try:
-    import yaml
-except ImportError:
-    print("Installing pyyaml...")
-    os.system("pip install --break-system-packages pyyaml")
-    import yaml
+from file_io import atomic_write_json
 
 
 class DirectorAgent:
@@ -38,7 +25,6 @@ class DirectorAgent:
         if ceo_dir is None:
             ceo_dir = str(Path(__file__).parent.parent)
         self.ceo_dir = Path(ceo_dir)
-        self.api_key = self._get_api_key()
         self.current_date = datetime.now().strftime("%Y-%m-%d")
         
         # Ensure required directories exist
@@ -47,31 +33,6 @@ class DirectorAgent:
         
         print(f"🧠 DIRECTOR initialized for {self.current_date}")
         print(f"📁 Working in: {self.ceo_dir}")
-
-    def _get_api_key(self) -> str:
-        """Get Anthropic API key from auth profiles or environment."""
-        # Try environment first
-        api_key = os.environ.get('ANTHROPIC_API_KEY')
-        if api_key:
-            return api_key
-            
-        # Try auth profiles
-        auth_path = Path.home() / ".openclaw/agents/main/agent/auth-profiles.json"
-        if auth_path.exists():
-            try:
-                with open(auth_path) as f:
-                    auth_data = json.load(f)
-                    
-                # Look for anthropic token
-                profiles = auth_data.get("profiles", {})
-                for profile_name, profile_data in profiles.items():
-                    if profile_data.get("provider") == "anthropic":
-                        return profile_data.get("token")
-                        
-            except Exception as e:
-                print(f"Warning: Could not read auth profiles: {e}")
-        
-        raise ValueError("No Anthropic API key found. Set ANTHROPIC_API_KEY environment variable.")
 
     def _read_json_safe(self, file_path: Path, default: Any = None) -> Any:
         """Safely read JSON file with default fallback."""
@@ -281,8 +242,7 @@ Be strategic, be specific, be actionable. This is your CEO moment."""
         
         # Save missions.json
         missions_file = self.ceo_dir / "state" / "missions.json"
-        with open(missions_file, 'w') as f:
-            json.dump(plan, f, indent=2)
+        atomic_write_json(missions_file, plan, indent=2)
         print(f"💾 Saved strategic plan to {missions_file}")
         
         # Create director report
@@ -303,8 +263,7 @@ Be strategic, be specific, be actionable. This is your CEO moment."""
         
         # Save director report
         report_file = self.ceo_dir / "state" / "agent-reports" / f"director-{self.current_date}.json"
-        with open(report_file, 'w') as f:
-            json.dump(report, f, indent=2)
+        atomic_write_json(report_file, report, indent=2)
         print(f"📋 Saved director report to {report_file}")
 
     def run_planning_cycle(self) -> None:
@@ -411,8 +370,7 @@ Consider: What's working? What isn't? Where should we double down? What should w
         }
         
         report_file = self.ceo_dir / "state" / "agent-reports" / f"director-weekly-{self.current_date}.json"
-        with open(report_file, 'w') as f:
-            json.dump(reflection_report, f, indent=2)
+        atomic_write_json(report_file, reflection_report, indent=2)
             
         print(f"📋 Weekly reflection saved to {report_file}")
         print("\n🔍 WEEKLY REFLECTION SUMMARY")

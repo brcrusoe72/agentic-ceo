@@ -1,0 +1,95 @@
+import importlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+TOOLS = ROOT / "tools"
+sys.path.insert(0, str(TOOLS))
+
+
+def test_director_initializes_without_anthropic_key(monkeypatch, tmp_path):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    director = importlib.import_module("director")
+
+    instance = director.DirectorAgent(str(tmp_path))
+
+    assert instance.ceo_dir == tmp_path
+
+
+def test_analyst_reports_optional_youtube_dependency(monkeypatch):
+    analyst = importlib.import_module("analyst")
+    real_import = __import__
+
+    def missing_youtube(name, *args, **kwargs):
+        if name == "yt_dlp":
+            raise ImportError("not installed")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", missing_youtube)
+
+    with pytest.raises(RuntimeError, match="requirements-youtube.txt"):
+        analyst.ContentExtractor._load_yt_dlp()
+
+
+def test_openclaw_response_is_parsed(monkeypatch):
+    api = importlib.import_module("api")
+    response = {
+        "result": {"payloads": [{"text": "working response"}]},
+    }
+
+    monkeypatch.setattr(
+        api.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args[0], 0, stdout=json.dumps(response), stderr=""
+        ),
+    )
+
+    assert api.call_claude("system", "user") == "working response"
+
+
+def test_full_cycle_stops_when_director_fails(monkeypatch):
+    orchestrator = importlib.import_module("orchestrator")
+    calls = []
+
+    def failed_director(name, script, args=None):
+        calls.append((name, script, args))
+        return False
+
+    monkeypatch.setattr(orchestrator, "run_agent", failed_director)
+
+    results = orchestrator.full_cycle()
+
+    assert results == {"director": False}
+    assert calls == [("Director", "director.py", None)]
+
+
+def test_atomic_json_write_preserves_existing_file_on_replace_failure(monkeypatch, tmp_path):
+    file_io = importlib.import_module("file_io")
+    target = tmp_path / "missions.json"
+    target.write_text('{"current_cycle": "previous"}')
+
+    def failed_replace(source, destination):
+        raise OSError("simulated interrupted replacement")
+
+    monkeypatch.setattr(file_io.os, "replace", failed_replace)
+
+    with pytest.raises(OSError, match="interrupted replacement"):
+        file_io.atomic_write_json(target, {"current_cycle": "new"}, indent=2)
+
+    assert json.loads(target.read_text()) == {"current_cycle": "previous"}
+    assert list(tmp_path.glob(".missions.json.*.tmp")) == []
+
+
+def test_atomic_json_write_publishes_complete_document(tmp_path):
+    file_io = importlib.import_module("file_io")
+    target = tmp_path / "missions.json"
+
+    file_io.atomic_write_json(target, {"missions": ["research"]}, indent=2)
+
+    assert json.loads(target.read_text()) == {"missions": ["research"]}
